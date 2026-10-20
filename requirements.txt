@@ -1,0 +1,4 @@
+requests>=2.25
+# 可选：现代化界面；不装会自动回退到 tkinter
+# PySide6>=6.2
+# 测试：pytest>=7

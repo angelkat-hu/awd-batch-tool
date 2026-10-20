@@ -1,0 +1,16 @@
+本工具依赖以下第三方库：
+
+必需：
+  pip install requests
+
+推荐（现代化界面，默认使用）：
+  pip install PySide6
+
+测试（可选）：
+  pip install pytest
+
+说明：
+- 装了 PySide6 会使用 ui_qt.py 的界面；没装则自动回退到 ui.py 的 tkinter 界面。
+- tkinter 为 Python 自带，无需安装（若提示缺少 tkinter，请重装 Python 时勾选 tcl/tk）。
+- 网络请求核心在 core.py，与界面无关，方便二次开发。
+- 也可以直接：pip install -r requirements.txt

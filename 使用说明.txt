@@ -1,0 +1,198 @@
+AWD 批量工具 v3.1 - 使用说明
+=================================
+
+一、安装依赖
+------------
+必需：
+    pip install requests
+
+推荐（现代化界面，默认使用）：
+    pip install PySide6
+
+说明：
+- 装了 PySide6 使用 ui_qt.py 的新界面；没装会自动回退到 ui.py 的 tkinter 界面。
+- tkinter 版是兜底版，功能少于 PySide6 版（没有命令台、自动轮次、收件箱、完整设置页）。
+- 测试依赖：pip install pytest
+
+二、启动
+--------
+    python main.py
+
+三、界面总览（PySide6）
+------------------------
+左侧六页：
+    1. 目标 IP
+    2. 写入不死马
+    3. 提交 flag
+    4. 命令
+    5. 状态
+    6. 设置
+
+顶部状态栏：目标 / 存活 / 已写马 / 已取 flag / 已提交
+底部：进度条、停止、日志加大/缩小、清空日志；运行日志带时间戳。
+窗口最小 860x540；字号 11-18；浅色（粉彩）/深色主题；窗口尺寸会记住。
+
+四、使用流程
+------------
+1. 目标 IP
+   - 「我的 IP」支持三种写法：
+         10.3.4.139   扫描 10.3.4.1 ~ 10.3.4.254
+         10.3.4.     同上
+         10.3.       逐个子网扫描 10.3.b.c
+   - 「端口」默认 80；扫描结果按 ip 或 ip:port 写入 ip.txt。
+   - 目标行支持：ip、ip:port、http://ip:port、https://ip，支持 # 注释。
+   - 按钮：保存列表 / 测试存活 / 重新载入 / 导入文件 / 导出文件 / 清空。
+   - 测试存活：对当前列表逐个 TCP 连接 ip:port（目标行没写端口时按目标端口），
+     更新顶部「存活」计数和状态页「存活」列；只测端口，不发送 HTTP，不写 ip.txt。
+     扫描网段是按一个端口扫 /24，测试存活是测你手填的整个列表。
+
+2. 写入不死马
+   - 木马 URL：入口 shell 地址，例如 http://127.0.0.1/shell.php。
+     主机名会自动替换成每台目标 IP；URL 没写端口时使用目标行/目标端口。
+   - 执行方式：
+         代码执行   入口是 eval 型 shell（推荐）
+         命令执行   入口是 system 型 shell
+   - 传参方式：入口接收 payload 的 GET / POST 方式。
+   - 入口参数名：入口 shell 执行命令的参数名（默认 cmd）。
+   - 请求头：可选，格式 `X-Forwarded-For: 127.0.0.1 | Cookie: a=1; b=2`；
+     写入、触发、验证三步都会带上，适合 WAF/CDN/鉴权；命令行用 --header。
+   - 不死马代码：默认模板里的 md5 由「设置」里的 pass 自动生成，
+     改过 pass 或命令参数名后，点「载入默认代码」重新生成。
+   - 写马优先用 PHP 原生 file_put_contents + mkdir，不依赖 shell_exec；
+     原生写失败会自动回退到 system(shell) 方式。
+   - 按钮：一键写入全部 / 试写一台 / 仅重试上次失败 / 保存代码 / 载入默认代码。
+   - 结果表显示每台的写入与验证结果；并发数在「设置」里。
+      失败日志会包含：写入绝对路径、最终马/触发 URL、入口 HTTP 状态与回显片段、
+      触发是否发出、验证 URL 与 HTTP 状态，便于定位是入口、触发还是验证失败。
+
+3. 提交 flag
+   - 取 flag 命令：shell 命令（例如 cat /flag），工具会包一层 system() 执行；
+     同时会自动尝试 PHP 原生读取 /flag、/flag.txt、/root/flag、/tmp/flag 等路径。
+     命中的文件路径会缓存到 state.json，下一轮原生读取优先尝试该路径（状态页可见）。
+   - 提交参数名 + 提交报文：把抓包工具里的原始 HTTP 报文原样粘贴。
+   - 查看响应：在结果表选中一行，点「查看响应」或双击，查看完整响应包
+     （请求方法/URL、HTTP 状态、响应头、正文）；日志/说明只显示前 180 字摘要。
+   - 复制：响应弹窗有「复制全部」；结果表「复制结果」复制选中行；底部「复制日志」。
+   - 表格不用打开弹窗：选中行 Ctrl+C，或右键「复制单元格 / 复制整行 / 复制全部 /
+     复制完整响应包」。只有要选单元格里的部分字符时，才双击/右键打开文本窗口。
+   - 预览报文：不发送请求，弹窗显示实际会用的 method / URL / headers / body，
+     方便核对 cookie/token/编码；命令行对应 submit --dry-run。
+   - 提交协议（设置页）：自动 / HTTP / HTTPS。
+         自动：按 Host 端口、Origin/Referer、X-Forwarded-Proto 推断；
+         HTTPS 平台 Host 通常不带 :443，自动推断不出来时请手动选 HTTPS。
+   - 支持：GET、POST 表单、POST JSON；表单会自动 URL 编码并替换同名参数；
+     JSON 只支持顶层对象。
+   - 成功判定优先级：
+         成功关键字 > JSON 的 code/errno/status/success > HTTP 状态
+     判不出来会显示「未知：HTTP 200，响应：…」，并附带响应包前 180 字；
+      按平台返回的报错/成功文案在「设置」里填「成功关键字」即可，工具不会把 200 直接当成功。
+   - 按钮：取 flag 并提交全部 / 试跑一台 / 仅重试上次失败 / 只取 flag 不提交 /
+     收件箱… / 导出结果。
+   - 提交时网络异常 / 5xx 会自动重试一次；401/403/429 不重试，交给熔断。
+   - 提交限速 / 去重（设置页）：
+         提交间隔：两次提交之间的最小间隔（0-5 秒，默认 0 不限制）；
+         全局去重：同一个 flag 只提交一次（默认关闭；平台按 flag 计分时再开）。
+   - 自动轮次：
+         设置间隔（30-3600 秒）→ 开始自动轮次；
+         默认只提交变化的 flag；401/403/429 自动熔断并停止自动轮次；
+         倒计时旁会显示上一轮的成功/失败数；
+         可随时「停止自动」，当前任务仍在跑时先点底部「停止」。
+   - 收件箱：弹窗粘贴 flag（每行一个，支持 flag{...} 或整段文本），
+     使用当前提交报文和参数名统一提交，适合提交其他工具/队友发来的 flag。
+
+4. 命令（批量命令台）
+   - 选择执行方式：
+         Shell 命令   会包在 system() 里执行
+         PHP 代码     直接 eval，不要带 <?php ?>
+   - 预设：id / 系统信息 / 根目录 / 找 flag / 读 flag / PHP 配置 / 进程 /
+     监听端口 / 定时任务 / web 目录 / 最近 PHP / 查马 / SUID / SSH key。
+   - 按钮：执行全部 / 健康巡检 / 防守体检 / 导出结果 / 清空结果。
+   - 结果表：IP、输出、耗时、状态；输出列可滚动查看，悬停有完整内容。
+   - 健康巡检会检查所有落地木马是否存活，并更新顶部「存活」计数。
+   - 防守体检：自查 webshell 特征、最近修改的 PHP、disable_functions /
+     open_basedir、flag 权限、upload 目录、SUID、cron、SSH authorized_keys、
+     监听端口，结果弹窗按「严重/注意/提示/正常」分级。
+     体检默认 8 秒超时（比普通请求长），CLI 可用 --timeout 覆盖。
+      注意：体检脚本同样走 system()，目标禁用 system 时会体检失败。
+
+5. 状态
+   - 每台目标一行：存活 / 已写马 / 已提交 / 最后 flag / flag 路径；
+   - 任务结束后自动刷新，也可以点「刷新」；「导出 CSV」导出明细。
+   - flag 路径来自上一轮命中缓存，下一轮取 flag 会优先尝试。
+
+6. 设置
+   - 不死马路径与文件：写入绝对路径 / 访问相对路径 / 木马文件名。
+   - 木马校验：pass 密码、命令参数名。
+   - 网络：请求超时、扫描超时、扫描并发、任务并发、提交并发、提交间隔、目标端口。
+   - 提交判定与界面：成功关键字、全局去重、提交协议、界面字号、主题。
+   - 保存设置是原子写（临时文件 + replace），写失败会提示且不会改内存配置。
+   - 恢复默认会删除 settings.json 并恢复默认值；之后请点「载入默认代码」重新生成 md5。
+
+五、命令行版（可选，不依赖 PySide6）
+--------------------------------
+    python cli.py scan --my-ip 10.3.4.139 --save
+    python cli.py probe --target-file ip.txt
+    python cli.py write --target 10.3.4.70 --url http://127.0.0.1/shell.php
+    python cli.py fetch --target-file ip.txt --url http://127.0.0.1/shell.php
+    python cli.py submit --target-file ip.txt --url http://127.0.0.1/shell.php \
+        --raw-file request.txt --param flag
+    python cli.py submit --target-file ip.txt --url http://127.0.0.1/shell.php \
+        --raw-file request.txt --param flag --dedupe --interval 0.5
+    python cli.py submit --raw-file request.txt --param flag --dry-run
+    python cli.py command --target 10.3.4.70 --cmd "id"
+    python cli.py health --target-file ip.txt --url http://127.0.0.1/shell.php
+    python cli.py check --target-file ip.txt --url http://127.0.0.1/shell.php
+
+说明：
+- 结果写 stdout，日志写 stderr；加 --json 时 stdout 只输出 JSON。
+- 与 GUI 共用 settings.json / state.json / ip.txt。
+- 所有命令：python cli.py -h；子命令：python cli.py write -h。
+
+六、数据文件
+------------
+    config.py       默认配置 + settings.json / state.json 读写
+    core.py         网络核心：扫描 / 写马 / 取 flag / 提交 / 命令 / 批处理
+    cli.py          命令行版（无 GUI）
+    get_ip.py       网段扫描旧入口（兼容）
+    ui_qt.py        PySide6 界面（默认）
+    ui.py           tkinter 界面（兜底）
+    main.py         入口，自动选择界面
+    自定义.py        旧接口兼容层
+    settings.json   设置（首次保存后生成）
+    state.json      上次的 flag / flag 路径 / 已提交 / 存活 / 已写马（自动生成）
+    logs/           每天一个运行日志
+    ip.txt          目标列表
+    tests/          单元、集成、UI、CLI 测试
+
+七、常见问题
+------------
+- 目标 404：不死马路径与站点根目录不一致。到「设置」改
+  写入绝对路径 / 访问相对路径 / 木马文件名 三个值。
+- 写了马但取不到 flag：可能 disable_functions 禁了 system；
+  工具会自动尝试 PHP 原生读取常见 flag 路径，仍不行就换「取 flag 命令」。
+- 提交返回 200 但没得分：检查「成功关键字」，或确认平台 JSON 字段；
+  工具不会把 200 直接当成功。
+- 平台 429/限流：把提交并发降到 1-3，设置「提交间隔」0.3-1 秒；
+  401/403/429 会自动熔断，确认 token 后重启轮次。
+- 全局去重默认关闭：平台按目标计分时不要开；按 flag 计分时再开。
+- 自动轮次不动：检查是否还有任务在跑、目标列表/报文/参数名是否为空。
+- 改了 pass 后马不可用：点「载入默认代码」重新生成 md5。
+- 换目录启动：ip/settings/state/logs 都按工具目录的绝对路径处理。
+- tkinter 版没有设置页，改配置请直接编辑 settings.json 或用 PySide6 版。
+
+八、测试
+--------
+    pip install pytest
+    python -m pytest -q
+
+说明：pytest.ini 已用 -p no:flask 关闭本机不兼容的 pytest-flask 插件；
+也可以直接双击 run_tests.bat（内部禁用第三方插件自动加载）。
+测试覆盖：IP/目标解析、payload、报文解析、表单编码、JSON/GET 提交、
+并发批处理、本地 mock 靶场的写马/取 flag/提交/扫描、目标存活探测、
+防守体检解析、UI 线程任务、CLI 与端到端流程。
+
+九、注意
+--------
+- 仅供授权的 AWD 比赛与教学环境使用，不要扫描校园网/公网。
+- 工具内置 webshell；分发前清掉 settings.json、state.json、logs/、ip.txt、
+  __pycache__，避免把真实密码和往期目标带出去。
