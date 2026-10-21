@@ -469,3 +469,27 @@ def test_table_copy_without_dialog(window, qapp):
     win.tbl_flag.selectRow(0)
     win.tbl_flag.copy_rows()
     assert '成功' in qapp.clipboard().text()
+
+
+def test_scan_wildcard_gui(window, qapp, monkeypatch):
+    win, tmp = window
+    calls = []
+
+    def fake_scan(prefix, my_ip, progress=None, stop_flag=None,
+                  timeout=None, workers=None, port=None):
+        calls.append((prefix, my_ip, port))
+        if progress:
+            progress(2, 2)
+        return ['10.1.1.1', '10.1.254.1']
+
+    monkeypatch.setattr(core, 'scan_hosts', fake_scan)
+    win.ed_myip.setText('10.1.x.1')
+    win.ed_port.setText('20000')
+    win.on_scan()
+    _wait_task(win, qapp)
+    assert calls
+    assert calls[0][0] == '10.1.x.1'
+    assert calls[0][1] == '10.1.x.1'
+    assert calls[0][2] == '20000'
+    lines = (tmp / 'ip.txt').read_text(encoding='utf-8').splitlines()
+    assert lines == ['10.1.1.1:20000', '10.1.254.1:20000']

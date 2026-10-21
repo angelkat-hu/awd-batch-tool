@@ -687,6 +687,8 @@ class MainWindow(QWidget):
         row = QHBoxLayout()
         row.setSpacing(8)
         self.ed_myip = QLineEdit('127.0.0.1')
+        self.ed_myip.setToolTip(
+            '支持 10.3.4.139 / 10.3.4. / 10.3. / 10.1.x.1 / 10.1.*.1')
         self.ed_myip.setFixedWidth(180)
         row.addWidget(QLabel('我的 IP'))
         row.addWidget(self.ed_myip)
