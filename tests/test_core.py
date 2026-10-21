@@ -66,6 +66,12 @@ class NativeSession(FakeSession):
     ('10.3.4.', '10.3.4.'),
     ('10.3.', '10.3.'),
     (' 10.3.4.7 ', '10.3.4.'),
+    ('10.1.x.1', '10.1.x.1'),
+    ('10.1.*.1', '10.1.x.1'),
+    ('10.1.X.1', '10.1.x.1'),
+    ('10.1.1.x', '10.1.1.x'),
+    ('10.x.1.1', '10.x.1.1'),
+    ('10.1.x.x', '10.1.x.x'),
 ])
 def test_parse_ip_field_ok(text, expected):
     assert core.parse_ip_field(text) == expected
@@ -73,7 +79,7 @@ def test_parse_ip_field_ok(text, expected):
 
 @pytest.mark.parametrize('text', [
     '10.3.4.999', '10.3.4.0/24', '', 'abc', '1.2.3.4.5', '256.1.1.1',
-    '10..3.4', '.10.3.4',
+    '10..3.4', '.10.3.4', '10.1.x', 'x.x.x.x', '10.1.256.x', '10.1.x.999',
 ])
 def test_parse_ip_field_bad(text):
     assert core.parse_ip_field(text) is None
@@ -92,6 +98,14 @@ def test_iter_scan_ip():
 
     # 不带结尾点也应按同一网段处理
     assert core.iter_scan_ip('10.3.4', '10.3.4.139') == ips
+
+    wild = core.iter_scan_ip('10.1.x.1', '10.9.9.9')
+    assert len(wild) == 254
+    assert wild[0] == '10.1.1.1'
+    assert wild[-1] == '10.1.254.1'
+    wild_skip = core.iter_scan_ip('10.1.x.1', '10.1.3.1')
+    assert len(wild_skip) == 253
+    assert '10.1.3.1' not in wild_skip
 
 
 def test_parse_target_line():
@@ -411,6 +425,20 @@ def test_run_batch_stop():
 def test_scan_hosts_invalid_prefix():
     assert core.scan_hosts('bad', '1.2.3.4') == []
     assert core.scan_hosts('', '') == []
+
+
+def test_scan_hosts_wildcard(monkeypatch):
+    monkeypatch.setattr(core, '_tcp_open',
+                        lambda ip, port, timeout: True)
+    ips = core.scan_hosts('10.1.x.1', '10.9.9.9',
+                          timeout=0.01, workers=10)
+    assert len(ips) == 254
+    assert '10.1.1.1' in ips
+    assert '10.1.254.1' in ips
+    # 界面会把通配模式本身当作“我的 IP”传进来
+    ips_self = core.scan_hosts('10.1.x.1', '10.1.x.1',
+                               timeout=0.01, workers=10)
+    assert len(ips_self) == 254
 
 
 # ---------------------------------------------------------------- 写马 / 命令 / flag

@@ -530,7 +530,8 @@ def build_parser():
     sub = parser.add_subparsers(dest='command', required=True)
 
     p = sub.add_parser('scan', help='扫描网段存活')
-    p.add_argument('--my-ip', required=True, help='我的 IP / 网段前缀')
+    p.add_argument('--my-ip', required=True,
+                   help='我的 IP / 网段前缀，如 10.3.4.139 / 10.3. / 10.1.x.1')
     p.add_argument('--port', default=None, help='web 端口，默认取设置')
     p.add_argument('--timeout', type=float, default=None)
     p.add_argument('--workers', type=int, default=None)

@@ -17,6 +17,7 @@ author : anglekat
 """
 
 import base64
+import itertools
 import json
 import re
 import shlex
@@ -243,33 +244,63 @@ def parse_ip_field(text):
       10.3.4.139   -> 扫描同网段 10.3.4.1 ~ 10.3.4.254
       10.3.4.      -> 同上
       10.3.        -> 逐个子网扫描 10.3.b.c
-    返回前缀字符串（例如 '10.3.4.'），非法则返回 None。
-    v3.0 修正：最后一段也做 0-255 校验，10.3.4.999 不再被静默接受。
+      10.1.x.1     -> 固定第 1/2/4 段，第 3 段 1~254（* 同 x）
+      10.1.1.x     -> 固定前三段，最后一段 1~254
+    返回前缀/通配模式字符串，非法则返回 None。
     """
     text = str(text or '').strip()
-    if not text:
+    if not text or '..' in text or text.startswith('.'):
         return None
-    if '..' in text or text.startswith('.'):
-        return None
-    parts = [p for p in text.split('.') if p != '']
+    parts = text.rstrip('.').split('.')
     if len(parts) not in (2, 3, 4):
         return None
+    wildcard = any(p.lower() in ('x', '*') for p in parts)
+    if wildcard:
+        if len(parts) != 4:
+            return None
+        wild_count = 0
+        for part in parts:
+            if part.lower() in ('x', '*'):
+                wild_count += 1
+                continue
+            if not part.isdigit() or not (0 <= int(part) <= 255):
+                return None
+        # 两段通配最多 254*254；三段通配太大，不支持
+        if not (1 <= wild_count <= 2):
+            return None
+        return '.'.join('x' if p.lower() in ('x', '*') else p for p in parts)
     for part in parts:
         if not part.isdigit() or not (0 <= int(part) <= 255):
             return None
     if len(parts) == 4:
-        parts = parts[:3]
+        return '.'.join(parts[:3]) + '.'
     return '.'.join(parts) + '.'
 
 
 def iter_scan_ip(prefix, my_ip):
-    """根据前缀生成待扫描的 IP 列表（跳过自己）；prefix 不带点时会自动补上"""
+    """根据前缀/通配模式生成待扫描 IP 列表（跳过自己）"""
     prefix = str(prefix or '').strip()
+    my_target = _as_target(my_ip)
+    my_host = my_target.ip
+    body = prefix.rstrip('.')
+    segs = body.split('.')
+    if any(seg.lower() in ('x', '*') for seg in segs):
+        if len(segs) != 4:
+            return []
+        wild = [i for i, seg in enumerate(segs)
+                if seg.lower() in ('x', '*')]
+        result = []
+        for values in itertools.product(range(1, 255), repeat=len(wild)):
+            parts = list(segs)
+            for idx, value in zip(wild, values):
+                parts[idx] = str(value)
+            ip = '.'.join(parts)
+            if ip != my_host:
+                result.append(ip)
+        return result
     if prefix and not prefix.endswith('.'):
         prefix += '.'
     segs = prefix.strip('.').split('.')
-    my_target = _as_target(my_ip)
-    my_host = my_target.ip
     result = []
     if len(segs) == 3:
         for d in range(1, 255):
@@ -348,9 +379,18 @@ def scan_hosts(prefix, my_ip, progress=None, stop_flag=None, timeout=None,
     except (TypeError, ValueError):
         port = 80
 
-    segs = str(prefix or '').strip('.').split('.')
-    if (len(segs) not in (2, 3)
-            or not all(s.isdigit() and 0 <= int(s) <= 255 for s in segs)):
+    segs = str(prefix or '').strip().rstrip('.').split('.')
+    wildcard = any(s.lower() in ('x', '*') for s in segs)
+    if wildcard:
+        if len(segs) != 4:
+            return []
+        for s in segs:
+            if s.lower() in ('x', '*'):
+                continue
+            if not s.isdigit() or not (0 <= int(s) <= 255):
+                return []
+    elif (len(segs) not in (2, 3)
+          or not all(s.isdigit() and 0 <= int(s) <= 255 for s in segs)):
         return []
     targets = iter_scan_ip(prefix, my_ip)
     total = len(targets)

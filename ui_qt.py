@@ -705,8 +705,8 @@ class MainWindow(QWidget):
         row.addWidget(self.lbl_alive)
         body.addLayout(row)
 
-        hint = QLabel('支持 10.3.4.139 / 10.3.4. / 10.3. 三种写法；目标行支持 ip、ip:port、'
-                      'http://ip:port；扫描结果自动写入 ip.txt')
+        hint = QLabel('支持 10.3.4.139 / 10.3.4. / 10.3. / 10.1.x.1 / 10.1.*.1；'
+                      '目标行支持 ip、ip:port、http://ip:port；扫描结果自动写入 ip.txt')
         hint.setObjectName('Hint')
         hint.setWordWrap(True)
         body.addWidget(hint)
