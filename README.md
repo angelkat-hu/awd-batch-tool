@@ -45,9 +45,30 @@ python cli.py submit --target-file ip.txt --raw-file request.txt --param flag
 - `settings.json`：首次保存后生成，含不死马 pass、路径、并发等；**不要提交**。
 - `state.json`：上次 flag / 已提交 / 存活 / 已写马；**不要提交**。
 - `ip.txt`：目标列表；**不要提交**。
+- `pass.txt`：启动前的新 pass；**不要提交**。
 - `logs/`：运行日志；**不要提交**。
 - 已通过 `.gitignore` 排除以上文件；换机器/分发前也请检查。
-- 默认 pass 仅用于演示，使用前请在「设置」里修改并点「载入默认代码」。
+- 默认 pass 仅用于演示，使用前请改掉。
+
+## 启动前改 pass（自动更新不死马 md5）
+
+1. 在工具目录新建 `pass.txt`，一行写新 pass（可参考 `pass.txt.example`）；
+2. 双击 `start.bat`，脚本会读取为 `AWD_PASS`；
+3. `config.load_settings()` 读完 `settings.json` 后，用 `AWD_PASS` 覆盖 pass；
+4. 打开「写入不死马」页时，代码由 `busima_default()` 按新 pass 自动生成 md5，**不需要再点「载入默认代码」**。
+
+也可以直接设置环境变量：
+
+```bat
+set AWD_PASS=你的新pass
+python main.py
+```
+
+```powershell
+$env:AWD_PASS='你的新pass'; python main.py
+```
+
+注意：已经写在目标上的旧马还是旧 pass，必须重新写马覆盖；`pass.txt` 不要提交到仓库。
 
 ## 测试
 

@@ -60,6 +60,9 @@ AWD 批量工具 v3.1 - 使用说明
      写入、触发、验证三步都会带上，适合 WAF/CDN/鉴权；命令行用 --header。
    - 不死马代码：默认模板里的 md5 由「设置」里的 pass 自动生成，
      改过 pass 或命令参数名后，点「载入默认代码」重新生成。
+   - 启动前改 pass：在工具目录新建 pass.txt 写一行新 pass；start.bat 会读成
+     AWD_PASS，启动时覆盖 settings.json 的 pass，不死马代码的 md5 自动更新，
+     不需要再点「载入默认代码」。改完要重新写马，旧马仍是旧 pass。
    - 写马优先用 PHP 原生 file_put_contents + mkdir，不依赖 shell_exec；
      原生写失败会自动回退到 system(shell) 方式。
    - 按钮：一键写入全部 / 试写一台 / 仅重试上次失败 / 保存代码 / 载入默认代码。

@@ -69,3 +69,19 @@ def test_submit_interval_and_dedup_coerce():
 def test_busima_uses_dir():
     code = config.busima_default()
     assert "__DIR__" in code
+
+
+def test_env_pass_overrides_settings(temp_config, monkeypatch):
+    config.木马的pass密码 = 'old-pass'
+    assert config.save_settings() is True
+    config.木马的pass密码 = 'other'
+    monkeypatch.setenv('AWD_PASS', 'env-pass')
+    assert config.load_settings() is True
+    assert config.木马的pass密码 == 'env-pass'
+    assert hashlib.md5(b'env-pass').hexdigest() in config.busima_default()
+
+
+def test_env_pass_without_settings(temp_config, monkeypatch):
+    monkeypatch.setenv('AWD_PASS', 'env-only')
+    assert config.load_settings() is False
+    assert config.木马的pass密码 == 'env-only'

@@ -7,4 +7,5 @@ __pycache__/
 settings.json
 state.json
 ip.txt
+pass.txt
 logs/

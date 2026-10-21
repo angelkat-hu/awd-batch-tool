@@ -165,20 +165,32 @@ def ensure_dirs():
         pass
 
 
+def _apply_env_pass():
+    """启动脚本可用 AWD_PASS 覆盖 settings.json 里的 pass"""
+    env_pass = os.environ.get('AWD_PASS', '').strip()
+    if env_pass:
+        global 木马的pass密码
+        木马的pass密码 = env_pass
+
+
 def load_settings():
     """从 settings.json 读取用户设置，覆盖默认值；文件不存在/损坏返回 False"""
     if not os.path.exists(设置文件):
+        _apply_env_pass()
         return False
     try:
         with open(设置文件, 'r', encoding='utf-8') as f:
             data = json.load(f)
     except (OSError, ValueError):
+        _apply_env_pass()
         return False
     if not isinstance(data, dict):
+        _apply_env_pass()
         return False
     for key in 可保存项:
         if key in data:
             globals()[key] = _coerce(key, data[key])
+    _apply_env_pass()
     return True
 
 
